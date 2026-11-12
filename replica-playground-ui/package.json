@@ -1,0 +1,28 @@
+{
+	"name": "replica-playground-ui",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "tsc && vite build"
+	},
+	"dependencies": {
+		"@emotion/react": "^11.14.0",
+		"@emotion/styled": "^11.14.1",
+		"@mui/material": "^9.5.0",
+		"@reduxjs/toolkit": "^2.14.0",
+		"@tanstack/react-query": "^5.107.1",
+		"axios": "^1.21.1",
+		"react": "^19.3.1",
+		"react-dom": "^19.3.1",
+		"react-redux": "^9.3.1",
+		"react-router-dom": "^7.18.5"
+	},
+	"devDependencies": {
+		"@types/react": "^19.3.0",
+		"@types/react-dom": "^19.3.0",
+		"@vitejs/plugin-react": "^6.3.0",
+		"typescript": "^7.0.2",
+		"vite": "^8.3.8"
+	}
+}
