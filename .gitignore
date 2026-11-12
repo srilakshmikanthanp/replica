@@ -1,0 +1,12 @@
+.gradle/
+build/
+.idea/
+*.iml
+
+# playground H2 files (a run from the project or module folder keeps them in ./data)
+/data/
+/replica-playground/data/
+
+# playground UI
+replica-playground-ui/node_modules/
+replica-playground-ui/dist/
