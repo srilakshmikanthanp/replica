@@ -10,13 +10,13 @@ it arrive.
 ## Modules
 
 - [`replica-core`](replica-core): The core replication library
-- [`replica-spring`](replica-spring): Spring Data JPA implementation of the core interfaces
-- [`replica-playground`](replica-playground): Playground with a master and slave on H2 databases
-- [`replica-playground-ui`](replica-playground-ui): Playground web app to interact with the master and slaves
+- [`replica-spring-jpa`](replica-spring-jpa): Spring Data JPA implementation of the core interfaces
+- [`replica-playground-api`](replica-playground-api): Playground with a master and slave on H2 databases
+- [`replica-playground-web`](replica-playground-web): Playground web app to interact with the master and slaves
 
 ## Running the playground
 
-Requires Java 21 or later and Node.js. Run each task in its own terminal:
+Requires Java 21 or later and Node.js. Copy `.env.example` to `.env`, then run each task in its own terminal:
 
 ```
 ./gradlew runMaster    # http://localhost:8080

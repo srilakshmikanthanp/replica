@@ -7,7 +7,7 @@ plugins {
 dependencies {
   implementation(platform(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES))
 
-  implementation(project(":replica-spring"))
+  implementation(project(":replica-spring-jpa"))
   implementation("org.springframework.boot:spring-boot-starter-web")
   implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
   implementation("org.springframework.boot:spring-boot-starter-data-jpa")

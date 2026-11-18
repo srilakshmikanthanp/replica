@@ -1,4 +1,4 @@
-configure(subprojects.filter { it.name != "replica-playground-ui" }) {
+configure(subprojects.filter { it.name != "replica-playground-web" }) {
   apply(plugin = "java-library")
 
   group = "com.srilakshmikanthanp.replica"
