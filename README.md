@@ -11,6 +11,7 @@ it arrive.
 
 - [`replica-core`](replica-core): The core replication library
 - [`replica-spring-jpa`](replica-spring-jpa): Spring Data JPA implementation of the core interfaces
+- [`replica-integration-test`](replica-integration-test): Integration tests on H2 databases
 - [`replica-playground-api`](replica-playground-api): Playground with a master and slave on H2 databases
 - [`replica-playground-web`](replica-playground-web): Playground web app to interact with the master and slaves
 
@@ -27,3 +28,9 @@ Requires Java 21 or later and Node.js. Copy `.env.example` to `.env`, then run e
 Open http://localhost:5173 and add the slave on the Stations page with its URL, `http://localhost:8081`. The master
 copies its existing data to the slave and sends every later change. Another slave:
 `./gradlew runSlave -Pstation=slave3 -Pport=8083`.
+
+## Running the tests
+
+```
+./gradlew test
+```
