@@ -16,4 +16,8 @@ export class StationApi {
   create(name: string, url: string): Promise<Station> {
     return this.client.post('/stations', {name, url});
   }
+
+  remove(name: string): Promise<void> {
+    return this.client.delete(`/stations/${encodeURIComponent(name)}`);
+  }
 }

@@ -8,6 +8,8 @@ import com.srilakshmikanthanp.replica.playground.replication.station.StationServ
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,5 +39,11 @@ public class StationWriteController {
     boolean ready = jobs.findUnfinished().stream().noneMatch(job -> job.getDestinationId() == station.getStationId());
     StationResponseDto body = StationController.view(station.getStationId(), request.name().trim(), station.getUrl(), ready, outbox);
     return ResponseEntity.status(HttpStatus.CREATED).body(body);
+  }
+
+  @DeleteMapping("/{name}")
+  ResponseEntity<Void> remove(@PathVariable String name) {
+    stationService.remove(name);
+    return ResponseEntity.noContent().build();
   }
 }

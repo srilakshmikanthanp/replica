@@ -34,6 +34,11 @@ export function StationsPage() {
   const [url, setUrl] = useState('');
 
   const create = useMutation({mutationFn: () => addStation(api, url)});
+  const remove = useMutation({mutationFn: (name: string) => api.stations.remove(name)});
+
+  const confirmRemove = (name: string) => {
+    if (window.confirm(`Remove ${name}? Its unsent changes and backfill are deleted.`)) remove.mutate(name);
+  };
 
   const add = (event: SubmitEvent) => {
     event.preventDefault();
@@ -55,7 +60,7 @@ export function StationsPage() {
         <Button type="submit" variant="contained">Add station</Button>
       </FormCard>}
       <OfflineAlert offline={isError}/>
-      <DataTable columns={['Name', 'URL', 'State', 'Waiting']}>
+      <DataTable columns={['Name', 'URL', 'State', 'Waiting', '']}>
         {stations.map((station) => (
           <TableRow key={station.name}>
             <TableCell>{station.name}</TableCell>
@@ -65,6 +70,13 @@ export function StationsPage() {
                     label={station.ready ? 'ready' : 'backfilling'}/>
             </TableCell>
             <TableCell>{station.waiting}</TableCell>
+            <TableCell align="right">
+              {!readOnly && (
+                <Button size="small" color="error" disabled={remove.isPending} onClick={() => confirmRemove(station.name)}>
+                  Remove
+                </Button>
+              )}
+            </TableCell>
           </TableRow>
         ))}
       </DataTable>
