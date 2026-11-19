@@ -14,11 +14,18 @@ import {FormCard} from '../components/FormCard';
 import {Layout} from '../components/Layout';
 import type {Product} from './Product';
 import {useProducts} from './useProducts';
+import {SyncStatus, syncState} from '../components/SyncStatus';
+import {useSlaveCopies} from '../servers/useSlaveCopies';
+
+const productKey = (product: Product) => product.sku;
+const productContent = (product: Product) => JSON.stringify([product.categoryCode, product.name, product.price, [...product.tags].sort()]);
 
 export function ProductsPage() {
   const {readOnly} = useServers();
   const api = useSelectedServerApi();
   const {products, categories, tags, isError} = useProducts();
+  const slaveCopies = useSlaveCopies('products', (slaveApi) => slaveApi.products.list());
+  const copies = readOnly ? [] : slaveCopies;
   const [sku, setSku] = useState('');
   const [categoryCode, setCategoryCode] = useState('');
   const [name, setName] = useState('');
@@ -71,7 +78,7 @@ export function ProductsPage() {
         <Button type="submit" variant="contained">Save product</Button>
       </FormCard>}
       <OfflineAlert offline={isError}/>
-      <DataTable columns={['SKU', 'Category', 'Name', 'Price', 'Tags', '']}>
+      <DataTable columns={['SKU', 'Category', 'Name', 'Price', 'Tags', ...copies.map((copy) => copy.slave.name), '']}>
         {products.map((product) => (
           <TableRow key={product.sku}>
             <TableCell>{product.sku}</TableCell>
@@ -99,6 +106,11 @@ export function ProductsPage() {
                 )}
               </Stack>
             </TableCell>
+            {copies.map((copy) => (
+              <TableCell key={copy.slave.url}>
+                <SyncStatus state={syncState(product, copy.rows, productKey, productContent)}/>
+              </TableCell>
+            ))}
             <TableCell align="right">
               {!readOnly && <Stack direction="row" spacing={1} sx={{justifyContent: "flex-end"}}>
                 <Button size="small" onClick={() => {
