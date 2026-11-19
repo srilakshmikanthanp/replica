@@ -2,6 +2,7 @@ import {HealthApi} from '../health/HealthApi';
 import {InboxApi} from '../inbox/InboxApi';
 import {OutboxApi} from '../outbox/OutboxApi';
 import {CategoryApi} from '../category/CategoryApi';
+import {EventApi} from '../event/EventApi';
 import {ProductApi} from '../product/ProductApi';
 import {createClient} from '../api/createClient';
 import {SimulationApi} from '../simulation/SimulationApi';
@@ -20,6 +21,7 @@ export function createApi(baseUrl = '') {
     health: new HealthApi(client),
     outbox: new OutboxApi(client),
     inbox: new InboxApi(client),
+    events: new EventApi(client),
   };
 }
 

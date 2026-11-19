@@ -23,7 +23,7 @@ export function SimulationsPage() {
       </Simulation>
       <Simulation
         title="Failing events"
-        description="Tick the event types the slave fails to apply, then change categories, tags or products on the master and watch the slave's inbox. Messages of a ticked type stay pending and are retried until you untick it."
+        description="Tick the event types the slave fails to apply, then change categories, tags or products on the master and watch the slave's inbox. Messages of a ticked type stay pending and are retried until you untick it, and every message after them waits, because the inbox applies messages in order."
         runsOn="slave"
         selectedRole={selectedRole}
       >

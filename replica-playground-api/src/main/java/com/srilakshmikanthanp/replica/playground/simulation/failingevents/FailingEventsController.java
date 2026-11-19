@@ -17,7 +17,7 @@ public class FailingEventsController {
 
   @GetMapping
   FailingEventsDto get() {
-    return new FailingEventsDto(eventRegistry.getEventTypes().stream().sorted().toList(), failingEvents.getFailingEventTypes());
+    return new FailingEventsDto(failingEvents.getFailingEventTypes());
   }
 
   @PutMapping
