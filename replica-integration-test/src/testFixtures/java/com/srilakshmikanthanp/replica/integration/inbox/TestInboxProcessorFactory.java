@@ -11,6 +11,8 @@ import com.srilakshmikanthanp.replica.inbox.InboxRepository;
 import com.srilakshmikanthanp.replica.inbox.PollingInboxProcessor;
 import lombok.RequiredArgsConstructor;
 
+import java.util.Arrays;
+
 @RequiredArgsConstructor
 public class TestInboxProcessorFactory {
   private static final int BATCH_SIZE = 2;
@@ -26,11 +28,7 @@ public class TestInboxProcessorFactory {
 
   private static EventHandlerRegistry registry(TestEventHandler<?>... handlers) {
     EventHandlerRegistryBuilder builder = EventHandlerRegistry.builder();
-
-    for (TestEventHandler<?> handler : handlers) {
-      register(builder, handler);
-    }
-
+    Arrays.stream(handlers).forEach(handler -> register(builder, handler));
     return builder.build();
   }
 

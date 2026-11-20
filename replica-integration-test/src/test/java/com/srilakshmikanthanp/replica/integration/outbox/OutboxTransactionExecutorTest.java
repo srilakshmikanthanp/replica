@@ -8,6 +8,7 @@ import com.srilakshmikanthanp.replica.integration.user.TestUserConfig;
 import com.srilakshmikanthanp.replica.integration.user.TestUserCreatedEvent;
 import com.srilakshmikanthanp.replica.integration.user.TestUserService;
 import com.srilakshmikanthanp.replica.outbox.Outbox;
+import com.srilakshmikanthanp.replica.outbox.OutboxRepository;
 import com.srilakshmikanthanp.replica.station.Station;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +27,7 @@ class OutboxTransactionExecutorTest {
   private TestUserService testUserService;
 
   @Autowired
-  private TestOutboxService testOutboxService;
+  private OutboxRepository outboxRepository;
 
   @Test
   void shouldWriteOneRowForEachDestination() {
@@ -35,8 +36,8 @@ class OutboxTransactionExecutorTest {
 
     testUserService.createAndBroadcast("alice", stationOne.getId(), stationTwo.getId());
 
-    assertEquals(1, testOutboxService.unpublished(stationOne.getId()).size());
-    assertEquals(1, testOutboxService.unpublished(stationTwo.getId()).size());
+    assertEquals(1, outboxRepository.findUnpublished(stationOne.getId(), 10).size());
+    assertEquals(1, outboxRepository.findUnpublished(stationTwo.getId(), 10).size());
   }
 
   @Test
@@ -45,8 +46,8 @@ class OutboxTransactionExecutorTest {
 
     TestUser user = testUserService.createAndBroadcast("bob", station.getId());
 
-    Outbox row = testOutboxService.unpublished(station.getId()).getFirst();
-    assertEquals("test.user.created", row.getEventType());
+    Outbox row = outboxRepository.findUnpublished(station.getId(), 10).getFirst();
+    assertEquals(TestUserCreatedEvent.TYPE, row.getEventType());
     assertEquals(eventSerializer.serialize(TestUserCreatedEvent.of(user)), row.getPayload());
   }
 }

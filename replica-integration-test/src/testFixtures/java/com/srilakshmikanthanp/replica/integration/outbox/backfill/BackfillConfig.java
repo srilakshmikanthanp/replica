@@ -3,6 +3,11 @@ package com.srilakshmikanthanp.replica.integration.outbox.backfill;
 import com.srilakshmikanthanp.replica.database.gate.ReplicationGate;
 import com.srilakshmikanthanp.replica.database.transaction.TransactionExecutor;
 import com.srilakshmikanthanp.replica.event.EventRegistry;
+import com.srilakshmikanthanp.replica.event.EventSerializer;
+import com.srilakshmikanthanp.replica.outbox.OutboxRepository;
+import com.srilakshmikanthanp.replica.outbox.backfill.BackfillJobRunner;
+import com.srilakshmikanthanp.replica.outbox.backfill.BackfillRegistry;
+import com.srilakshmikanthanp.replica.outbox.backfill.CursorCodec;
 import com.srilakshmikanthanp.replica.outbox.backfill.BackfillJobRepository;
 import com.srilakshmikanthanp.replica.outbox.backfill.BackfillJobService;
 import com.srilakshmikanthanp.replica.outbox.backfill.BackfillJobStepRepository;
@@ -38,7 +43,31 @@ public class BackfillConfig {
   }
 
   @Bean
-  TestBackfillService testBackfillService(BackfillJobService backfillJobService, BackfillJobStepRepository backfillJobStepRepository) {
-    return new TestBackfillService(backfillJobService, backfillJobStepRepository);
+  CursorCodec cursorCodec() {
+    return new JsonCursorCodec();
+  }
+
+  @Bean
+  BackfillJobRunner backfillJobRunner(
+    BackfillJobRepository backfillJobRepository,
+    BackfillJobStepRepository backfillJobStepRepository,
+    EventRegistry eventRegistry,
+    BackfillRegistry backfillRegistry,
+    TransactionExecutor transactionExecutor,
+    EventSerializer eventSerializer,
+    OutboxRepository outboxRepository,
+    CursorCodec cursorCodec
+  ) {
+    return new BackfillJobRunner(
+      backfillJobRepository,
+      backfillJobStepRepository,
+      eventRegistry,
+      backfillRegistry,
+      transactionExecutor,
+      eventSerializer,
+      outboxRepository,
+      cursorCodec,
+      2
+    );
   }
 }

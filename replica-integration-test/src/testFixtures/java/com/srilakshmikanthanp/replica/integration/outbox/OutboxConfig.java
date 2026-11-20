@@ -10,6 +10,7 @@ import com.srilakshmikanthanp.replica.outbox.OutboxTransactionExecutor;
 import com.srilakshmikanthanp.replica.outbox.backfill.BackfillEventFilter;
 import com.srilakshmikanthanp.replica.outbox.backfill.BackfillJobStepRepository;
 import com.srilakshmikanthanp.replica.outbox.backfill.BackfillRegistry;
+import com.srilakshmikanthanp.replica.outbox.backfill.CursorCodec;
 import com.srilakshmikanthanp.replica.spring.outbox.OutboxJpaRepository;
 import com.srilakshmikanthanp.replica.spring.outbox.OutboxSpringRepository;
 import org.springframework.context.annotation.Bean;
@@ -24,8 +25,8 @@ public class OutboxConfig {
   }
 
   @Bean
-  BackfillEventFilter backfillEventFilter(BackfillJobStepRepository steps, EventRegistry eventRegistry) {
-    return new BackfillEventFilter(steps, BackfillRegistry.builder(eventRegistry).build(), new NoCursorCodec());
+  BackfillEventFilter backfillEventFilter(BackfillJobStepRepository steps, BackfillRegistry backfillRegistry, CursorCodec cursorCodec) {
+    return new BackfillEventFilter(steps, backfillRegistry, cursorCodec);
   }
 
   @Bean
@@ -38,11 +39,6 @@ public class OutboxConfig {
     EventSerializer eventSerializer
   ) {
     return new OutboxTransactionExecutor(outboxRepository, backfillEventFilter, transactionExecutor, replicationGate, eventRegistry, eventSerializer);
-  }
-
-  @Bean
-  TestOutboxService testOutboxService(OutboxRepository outboxRepository) {
-    return new TestOutboxService(outboxRepository);
   }
 
   @Bean
