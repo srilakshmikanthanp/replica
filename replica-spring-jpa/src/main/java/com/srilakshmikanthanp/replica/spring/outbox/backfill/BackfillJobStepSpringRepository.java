@@ -5,12 +5,27 @@ import com.srilakshmikanthanp.replica.outbox.backfill.BackfillJobStepRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.support.TransactionOperations;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 public class BackfillJobStepSpringRepository implements BackfillJobStepRepository {
   private final BackfillJobStepJpaRepository jpaRepository;
   private final TransactionOperations transactionOperations;
+
+  private static BackfillJobStepEntity toEntity(BackfillJobStep step) {
+    BackfillJobStepEntity entity = new BackfillJobStepEntity();
+    entity.setJobId(step.getJobId());
+    entity.setOrdinal(step.getOrdinal());
+    entity.setEventType(step.getEventType());
+    entity.setCheckpoint(step.getCheckpoint().orElse(null));
+    entity.setCompletedAt(step.getCompletedAt().orElse(null));
+    return entity;
+  }
 
   private static BackfillJobStep toModel(BackfillJobStepEntity entity) {
     BackfillJobStep step = new BackfillJobStep();
@@ -23,14 +38,24 @@ public class BackfillJobStepSpringRepository implements BackfillJobStepRepositor
     return step;
   }
 
-  private static BackfillJobStepEntity toEntity(BackfillJobStep step) {
-    BackfillJobStepEntity entity = new BackfillJobStepEntity();
-    entity.setJobId(step.getJobId());
-    entity.setOrdinal(step.getOrdinal());
-    entity.setEventType(step.getEventType());
-    entity.setCheckpoint(step.getCheckpoint().orElse(null));
-    entity.setCompletedAt(step.getCompletedAt().orElse(null));
-    return entity;
+  @Override
+  public Map<Long, List<BackfillJobStep>> findUnfinishedStepsForShare(Collection<Long> destinationIds) {
+    if (destinationIds.isEmpty()) {
+      return Map.of();
+    }
+
+    Map<Long, List<BackfillJobStep>> stepsByDestination = new HashMap<>();
+
+    for (UnfinishedStep unfinished : jpaRepository.findUnfinishedForShare(destinationIds)) {
+      stepsByDestination.computeIfAbsent(unfinished.getDestinationId(), id -> new ArrayList<>()).add(toModel(unfinished.getStep()));
+    }
+
+    return stepsByDestination;
+  }
+
+  @Override
+  public Optional<BackfillJobStep> findStepForUpdate(long stepId) {
+    return jpaRepository.findByIdForUpdate(stepId).map(BackfillJobStepSpringRepository::toModel);
   }
 
   @Override
@@ -44,11 +69,6 @@ public class BackfillJobStepSpringRepository implements BackfillJobStepRepositor
       .stream()
       .map(BackfillJobStepSpringRepository::toModel)
       .toList();
-  }
-
-  @Override
-  public boolean hasPendingSteps(long destinationId) {
-    return jpaRepository.existsByJobDestinationIdAndCompletedAtIsNull(destinationId);
   }
 
   @Override
@@ -69,8 +89,7 @@ public class BackfillJobStepSpringRepository implements BackfillJobStepRepositor
     Long completedAt = completed ? System.currentTimeMillis() : null;
     String expected = step.getCheckpoint().orElse(null);
 
-    Integer updated = transactionOperations.execute(status ->
-      jpaRepository.advance(step.getId(), expected, checkpoint, completedAt));
+    Integer updated = transactionOperations.execute(status -> jpaRepository.advance(step.getId(), expected, checkpoint, completedAt));
 
     if (updated == null || updated == 0) {
       return false;

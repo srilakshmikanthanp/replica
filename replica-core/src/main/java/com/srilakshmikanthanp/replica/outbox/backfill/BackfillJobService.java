@@ -36,7 +36,9 @@ public class BackfillJobService {
     }
 
     return transactionExecutor.execute(() -> {
+      BackfillJobValidator validator = new BackfillJobValidator(backfillJobStepRepository);
       replicationGate.enterExclusive();
+      validator.requireNotRunning(destinationId, steps);
       backfillJobRepository.save(job);
       steps.forEach(step -> step.setJobId(job.getId()));
       backfillJobStepRepository.saveAll(steps);

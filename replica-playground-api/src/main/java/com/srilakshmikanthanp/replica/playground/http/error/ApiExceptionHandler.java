@@ -1,6 +1,5 @@
 package com.srilakshmikanthanp.replica.playground.http.error;
 
-import com.srilakshmikanthanp.replica.outbox.backfill.DestinationNotReadyException;
 import com.srilakshmikanthanp.replica.playground.replication.station.StationAlreadyExistsException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
@@ -28,11 +27,6 @@ public class ApiExceptionHandler {
   @ExceptionHandler(DataIntegrityViolationException.class)
   ResponseEntity<Map<String, String>> refused(DataIntegrityViolationException e) {
     return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Refused: something still uses it, or a key it needs is missing"));
-  }
-
-  @ExceptionHandler(DestinationNotReadyException.class)
-  ResponseEntity<Map<String, String>> notReady(DestinationNotReadyException e) {
-    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).header("Retry-After", "1").body(Map.of("error", e.getMessage()));
   }
 
   @ExceptionHandler(PessimisticLockingFailureException.class)

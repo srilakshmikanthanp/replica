@@ -8,9 +8,10 @@ import com.srilakshmikanthanp.replica.event.*;
 import com.srilakshmikanthanp.replica.inbox.InboxRepository;
 import com.srilakshmikanthanp.replica.outbox.OutboxRepository;
 import com.srilakshmikanthanp.replica.outbox.OutboxTransactionExecutor;
-import com.srilakshmikanthanp.replica.outbox.backfill.BackfillGuard;
+import com.srilakshmikanthanp.replica.outbox.backfill.BackfillEventFilter;
 import com.srilakshmikanthanp.replica.outbox.backfill.BackfillJobRepository;
 import com.srilakshmikanthanp.replica.outbox.backfill.BackfillJobStepRepository;
+import com.srilakshmikanthanp.replica.outbox.backfill.BackfillRegistry;
 import com.srilakshmikanthanp.replica.playground.replication.backfill.JsonCursorCodec;
 import com.srilakshmikanthanp.replica.playground.replication.event.JsonEventCodec;
 import com.srilakshmikanthanp.replica.spring.database.gate.GateJpaRepository;
@@ -106,20 +107,24 @@ public class ReplicationConfig {
 
   @Master
   @Bean
-  BackfillGuard backfillGuard(BackfillJobStepRepository steps) {
-    return new BackfillGuard(steps);
+  BackfillEventFilter backfillEventFilter(
+    BackfillJobStepRepository steps,
+    BackfillRegistry backfillRegistry,
+    JsonCursorCodec cursorCodec
+  ) {
+    return new BackfillEventFilter(steps, backfillRegistry, cursorCodec);
   }
 
   @Master
   @Bean
   OutboxTransactionExecutor outboxTransactionExecutor(
     OutboxRepository outboxRepository,
-    BackfillGuard backfillGuard,
+    BackfillEventFilter backfillEventFilter,
     TransactionExecutor transactionExecutor,
     ReplicationGate replicationGate,
     EventRegistry eventRegistry,
     EventSerializer eventSerializer
   ) {
-    return new OutboxTransactionExecutor(outboxRepository, backfillGuard, transactionExecutor, replicationGate, eventRegistry, eventSerializer);
+    return new OutboxTransactionExecutor(outboxRepository, backfillEventFilter, transactionExecutor, replicationGate, eventRegistry, eventSerializer);
   }
 }

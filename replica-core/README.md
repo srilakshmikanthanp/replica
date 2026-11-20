@@ -81,11 +81,15 @@ EventContext context = EventContext.builder()
 returns the result and the event to send to each destination station:
 
 ```java
-BackfillGuard backfillGuard = new BackfillGuard(backfillJobStepRepository);
+BackfillEventFilter backfillEventFilter = new BackfillEventFilter(
+  backfillJobStepRepository,
+  backfillRegistry,
+  cursorCodec
+);
 
 OutboxTransactionExecutor outboxExecutor = new OutboxTransactionExecutor(
   outboxRepository,
-  backfillGuard,
+  backfillEventFilter,
   transactionExecutor,
   replicationGate,
   context.eventRegistry(),
@@ -107,8 +111,8 @@ The executor runs your operation in a transaction with the gate held shared. Wor
 operation, not before it, so a station added by a backfill job is seen by every write that starts after the job is
 created.
 
-While a destination is still being backfilled, every event for it is refused with a `DestinationNotReadyException`.
-The transaction rolls back, so nothing is saved, and the write can be tried again later.
+While a destination is being backfilled, an event is skipped if the backfill has not reached its row yet, because the
+backfill will copy that row later. Other events are sent as usual. See `affectedBy` in step 9.
 
 ## 6. Publish the outbox
 
@@ -176,7 +180,7 @@ public class ProductEventSource implements EventSource<ProductUpserted, ProductC
   @Override
   public EventBatch<ProductUpserted, ProductCursor> getNextBatch(BackfillJob job, @Nullable ProductCursor cursor, int limit) {
     long afterId = cursor != null ? cursor.lastId() : 0;
-    List<Product> rows = productRepository.findAllAfterIdForShare(afterId, limit);
+    List<Product> rows = productRepository.findAllAfterId(afterId, limit);
     List<ProductUpserted> events = rows.stream().map(ProductUpserted::from).toList();
     long lastId = rows.isEmpty() ? afterId : rows.getLast().id();
     return new EventBatch<>(events, new ProductCursor(lastId), rows.size() == limit);
@@ -190,7 +194,9 @@ public class ProductEventSource implements EventSource<ProductUpserted, ProductC
 ```
 
 - Page by a stable key (usually the ID). Return `hasMore = false` on the last batch.
-- Lock the rows you read (`FOR SHARE`), so a concurrent write to them gets a later outbox ID than the backfill.
+- Read the rows without locking them (no `FOR SHARE` or `FOR UPDATE`). The runner locks the step before calling
+  the source, and a write holding a row lock may be waiting for that step lock.
+- Run the backfill at READ COMMITTED, so a batch sees every change committed before it locked the step.
 - Provide a `CursorCodec` that turns a cursor into the stored checkpoint string and back.
 
 Register the sources, plan the order of the steps, create the job, and run it:
@@ -201,12 +207,25 @@ BackfillPlan plan = BackfillPlan.planner()
   .addEvent(ProductUpserted.class, CategoryUpserted.class)
   .plan();
 
-BackfillJobService backfillJobService = new BackfillJobService(transactionExecutor, replicationGate, backfillJobRepository, backfillJobStepRepository, context.eventRegistry());
+BackfillJobService backfillJobService = new BackfillJobService(
+  transactionExecutor,
+  replicationGate,
+  backfillJobRepository,
+  backfillJobStepRepository,
+  context.eventRegistry()
+);
+
 BackfillJob job = backfillJobService.create(stationId, plan).job();
 
-BackfillRegistry backfillRegistry = BackfillRegistry.builder()
+BackfillRegistry backfillRegistry = BackfillRegistry.builder(context.eventRegistry())
   .register(CategoryUpserted.class, categoryEventSource)
+    .affectedBy(CategoryUpserted.class, CategoryUpserted::code, CategoryCursor::lastCode)
+    .affectedBy(CategoryDeleted.class, CategoryDeleted::code, CategoryCursor::lastCode)
+    .done()
   .register(ProductUpserted.class, productEventSource)
+    .affectedBy(ProductUpserted.class, ProductUpserted::id, ProductCursor::lastId, Long::compare)
+    .affectedBy(ProductDeleted.class, ProductDeleted::id, ProductCursor::lastId, Long::compare)
+    .done()
   .build();
 
 BackfillJobRunner runner = new BackfillJobRunner(
@@ -225,10 +244,17 @@ runner.run(job.getId());
 ```
 
 Pass the event types an event depends on after it, such as `CategoryUpserted` for `ProductUpserted` whose rows point
-at categories. The planner copies those first, in any order they are added. While the job runs, every write to its station is
-refused (see step 5). A run can be repeated: it continues from the last
-committed batch. Backfilled events go through the normal outbox to the job's station, so steps
-6 to 8 deliver them.
+at categories. The planner copies those first, in any order they are added.
+
+Use `affectedBy` to list the live events that change the rows a source copies, including the backfilled event itself.
+`done()` throws if the backfilled event is missing. For each one, give how to read the row key from the event and from
+the cursor. An event whose key is greater than the cursor's is skipped, because the backfill will copy that row later.
+Keys are compared in natural order, or with a comparator such as `Long::compare`. For other cases, such as keys made of
+several columns, pass a `CursorEventPredicate` instead.
+
+The comparison must order keys exactly as the source's `ORDER BY` does. Strings compare by character code in Java, but
+many database collations ignore case or accents, so order string keys with a binary collation in the source, or page by
+a numeric key.
 
 A job can be created at any time, not only when a station is added, for example to copy a new event type to a station
 that is already receiving changes. Creating it takes the gate exclusively, so call it in the same transaction that
