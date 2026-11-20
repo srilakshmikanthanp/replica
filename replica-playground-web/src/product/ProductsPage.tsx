@@ -9,23 +9,38 @@ import {type SubmitEvent, useState} from 'react';
 import {ServerPicker} from '../servers/ServerPicker';
 import {useSelectedServerApi, useServers} from '../servers/useServers';
 import {OfflineAlert} from '../components/OfflineAlert';
-import {DataTable, TableCell, TableRow} from '../components/DataTable';
 import {FormCard} from '../components/FormCard';
 import {Layout} from '../components/Layout';
+import {MasterTable} from '../components/MasterTable';
+import {SlaveTable} from '../components/SlaveTable';
 import type {Product} from './Product';
 import {useProducts} from './useProducts';
-import {SyncStatus, syncState} from '../components/SyncStatus';
-import {useSlaveCopies} from '../servers/useSlaveCopies';
 
 const productKey = (product: Product) => product.sku;
-const productContent = (product: Product) => JSON.stringify([product.categoryCode, product.name, product.price, [...product.tags].sort()]);
+
+const productCells = (product: Product) => [
+  product.sku,
+  product.categoryCode,
+  product.name,
+  product.price,
+  <Stack direction="row" spacing={0.5} sx={{flexWrap: "wrap"}}>
+    {product.tags.map((tag) => <Chip key={tag} size="small" label={tag}/>)}
+  </Stack>,
+];
+
+const columns = ['SKU', 'Category', 'Name', 'Price', 'Tags'];
+
+const compareProducts = (product: Product, copy: Product) =>
+  product.categoryCode === copy.categoryCode &&
+  product.name === copy.name &&
+  product.price === copy.price &&
+  product.tags.length === copy.tags.length &&
+  product.tags.every((tag) => copy.tags.includes(tag));
 
 export function ProductsPage() {
   const {readOnly} = useServers();
   const api = useSelectedServerApi();
   const {products, categories, tags, isError} = useProducts();
-  const slaveCopies = useSlaveCopies('products', (slaveApi) => slaveApi.products.list());
-  const copies = readOnly ? [] : slaveCopies;
   const [sku, setSku] = useState('');
   const [categoryCode, setCategoryCode] = useState('');
   const [name, setName] = useState('');
@@ -78,53 +93,53 @@ export function ProductsPage() {
         <Button type="submit" variant="contained">Save product</Button>
       </FormCard>}
       <OfflineAlert offline={isError}/>
-      <DataTable columns={['SKU', 'Category', 'Name', 'Price', 'Tags', ...copies.map((copy) => copy.slave.name), '']}>
-        {products.map((product) => (
-          <TableRow key={product.sku}>
-            <TableCell>{product.sku}</TableCell>
-            <TableCell>{product.categoryCode}</TableCell>
-            <TableCell>{product.name}</TableCell>
-            <TableCell>{product.price}</TableCell>
-            <TableCell>
-              <Stack direction="row" spacing={0.5} sx={{alignItems: "center", flexWrap: "wrap"}}>
-                {product.tags.map((tag) => (
-                  <Chip key={tag} size="small" label={tag}
-                        onDelete={readOnly ? undefined : () => removeTag.mutate({sku: product.sku, name: tag})}/>
-                ))}
-                {!readOnly && freeTags(product).length > 0 && (
-                  <TextField
-                    select
-                    size="small"
-                    variant="standard"
-                    value=""
-                    onChange={(event) => addTag.mutate({sku: product.sku, name: event.target.value})}
-                    slotProps={{select: {displayEmpty: true, renderValue: () => 'add tag'}}}
-                    sx={{minWidth: 80}}
-                  >
-                    {freeTags(product).map((tag) => <MenuItem key={tag.name} value={tag.name}>{tag.name}</MenuItem>)}
-                  </TextField>
-                )}
-              </Stack>
-            </TableCell>
-            {copies.map((copy) => (
-              <TableCell key={copy.slave.url}>
-                <SyncStatus state={syncState(product, copy.rows, productKey, productContent)}/>
-              </TableCell>
-            ))}
-            <TableCell align="right">
-              {!readOnly && <Stack direction="row" spacing={1} sx={{justifyContent: "flex-end"}}>
-                <Button size="small" onClick={() => {
-                  setSku(product.sku);
-                  setCategoryCode(product.categoryCode);
-                  setName(product.name);
-                  setPrice(String(product.price));
-                }}>Edit</Button>
-                <Button size="small" color="error" onClick={() => remove.mutate(product.sku)}>Delete</Button>
-              </Stack>}
-            </TableCell>
-          </TableRow>
-        ))}
-      </DataTable>
+      {readOnly ? (
+        <SlaveTable columns={columns} rows={products} rowKey={productKey} cells={productCells}/>
+      ) : (
+        <MasterTable
+          name="products"
+          copies={(slaveApi) => slaveApi.products.list()}
+          columns={columns}
+          rows={products}
+          rowKey={productKey}
+          compare={compareProducts}
+          cells={(product, extra) => extra ? productCells(product) : [
+            product.sku,
+            product.categoryCode,
+            product.name,
+            product.price,
+            <Stack direction="row" spacing={0.5} sx={{alignItems: "center", flexWrap: "wrap"}}>
+              {product.tags.map((tag) => (
+                <Chip key={tag} size="small" label={tag} onDelete={() => removeTag.mutate({sku: product.sku, name: tag})}/>
+              ))}
+              {freeTags(product).length > 0 && (
+                <TextField
+                  select
+                  size="small"
+                  variant="standard"
+                  value=""
+                  onChange={(event) => addTag.mutate({sku: product.sku, name: event.target.value})}
+                  slotProps={{select: {displayEmpty: true, renderValue: () => 'add tag'}}}
+                  sx={{minWidth: 80}}
+                >
+                  {freeTags(product).map((tag) => <MenuItem key={tag.name} value={tag.name}>{tag.name}</MenuItem>)}
+                </TextField>
+              )}
+            </Stack>,
+          ]}
+          actions={(product) => (
+            <Stack direction="row" spacing={1} sx={{justifyContent: "flex-end"}}>
+              <Button size="small" onClick={() => {
+                setSku(product.sku);
+                setCategoryCode(product.categoryCode);
+                setName(product.name);
+                setPrice(String(product.price));
+              }}>Edit</Button>
+              <Button size="small" color="error" onClick={() => remove.mutate(product.sku)}>Delete</Button>
+            </Stack>
+          )}
+        />
+      )}
     </Layout>
   );
 }

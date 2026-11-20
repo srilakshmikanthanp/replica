@@ -8,23 +8,24 @@ import {ServerPicker} from '../servers/ServerPicker';
 import {useSelectedServerApi, useServers} from '../servers/useServers';
 import {useCategories} from './useCategories';
 import {OfflineAlert} from '../components/OfflineAlert';
-import {DataTable, TableCell, TableRow} from '../components/DataTable';
 import {FormCard} from '../components/FormCard';
 import {Layout} from '../components/Layout';
-import {SyncStatus, syncState} from '../components/SyncStatus';
-import {useSlaveCopies} from '../servers/useSlaveCopies';
+import {MasterTable} from '../components/MasterTable';
+import {SlaveTable} from '../components/SlaveTable';
 import type {Category} from './Category';
 
-const categoryContent = (category: Category) => category.name;
+const compareCategories = (category: Category, copy: Category) => category.name === copy.name;
 
 const categoryKey = (category: Category) => category.code;
+
+const categoryCells = (category: Category) => [category.code, category.name];
+
+const columns = ['Code', 'Name'];
 
 export function CategoriesPage() {
   const {readOnly} = useServers();
   const api = useSelectedServerApi();
   const {categories, isError} = useCategories();
-  const slaveCopies = useSlaveCopies('categories', (slaveApi) => slaveApi.categories.list());
-  const copies = readOnly ? [] : slaveCopies;
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
 
@@ -52,28 +53,28 @@ export function CategoriesPage() {
         <Button type="submit" variant="contained">Save category</Button>
       </FormCard>}
       <OfflineAlert offline={isError}/>
-      <DataTable columns={['Code', 'Name', ...copies.map((copy) => copy.slave.name), '']}>
-        {categories.map((category) => (
-          <TableRow key={category.code}>
-            <TableCell>{category.code}</TableCell>
-            <TableCell>{category.name}</TableCell>
-            {copies.map((copy) => (
-              <TableCell key={copy.slave.url}>
-                <SyncStatus state={syncState(category, copy.rows, categoryKey, categoryContent)}/>
-              </TableCell>
-            ))}
-            <TableCell align="right">
-              {!readOnly && <Stack direction="row" spacing={1} sx={{justifyContent: "flex-end"}}>
-                <Button size="small" onClick={() => {
-                  setCode(category.code);
-                  setName(category.name);
-                }}>Edit</Button>
-                <Button size="small" color="error" onClick={() => remove.mutate(category.code)}>Delete</Button>
-              </Stack>}
-            </TableCell>
-          </TableRow>
-        ))}
-      </DataTable>
+      {readOnly ? (
+        <SlaveTable columns={columns} rows={categories} rowKey={categoryKey} cells={categoryCells}/>
+      ) : (
+        <MasterTable
+          name="categories"
+          copies={(slaveApi) => slaveApi.categories.list()}
+          columns={columns}
+          rows={categories}
+          rowKey={categoryKey}
+          compare={compareCategories}
+          cells={categoryCells}
+          actions={(category) => (
+            <Stack direction="row" spacing={1} sx={{justifyContent: "flex-end"}}>
+              <Button size="small" onClick={() => {
+                setCode(category.code);
+                setName(category.name);
+              }}>Edit</Button>
+              <Button size="small" color="error" onClick={() => remove.mutate(category.code)}>Delete</Button>
+            </Stack>
+          )}
+        />
+      )}
     </Layout>
   );
 }

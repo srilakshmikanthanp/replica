@@ -6,22 +6,23 @@ import {type SubmitEvent, useState} from 'react';
 import {ServerPicker} from '../servers/ServerPicker';
 import {useSelectedServerApi, useServers} from '../servers/useServers';
 import {OfflineAlert} from '../components/OfflineAlert';
-import {DataTable, TableCell, TableRow} from '../components/DataTable';
 import {FormCard} from '../components/FormCard';
 import {Layout} from '../components/Layout';
-import {SyncStatus, syncState} from '../components/SyncStatus';
-import {useSlaveCopies} from '../servers/useSlaveCopies';
+import {MasterTable} from '../components/MasterTable';
+import {SlaveTable} from '../components/SlaveTable';
 import type {Tag} from './Tag';
 import {useTags} from './useTags';
 
 const tagName = (tag: Tag) => tag.name;
 
+const tagCells = (tag: Tag) => [tag.name];
+
+const columns = ['Name'];
+
 export function TagsPage() {
   const {readOnly} = useServers();
   const api = useSelectedServerApi();
   const {tags, isError} = useTags();
-  const slaveCopies = useSlaveCopies('tags', (slaveApi) => slaveApi.tags.list());
-  const copies = readOnly ? [] : slaveCopies;
   const [name, setName] = useState('');
 
   const save = useMutation({mutationFn: () => api.tags.save(name)});
@@ -41,22 +42,20 @@ export function TagsPage() {
         <Button type="submit" variant="contained">Add tag</Button>
       </FormCard>}
       <OfflineAlert offline={isError}/>
-      <DataTable columns={['Name', ...copies.map((copy) => copy.slave.name), '']}>
-        {tags.map((tag) => (
-          <TableRow key={tag.name}>
-            <TableCell>{tag.name}</TableCell>
-            {copies.map((copy) => (
-              <TableCell key={copy.slave.url}>
-                <SyncStatus state={syncState(tag, copy.rows, tagName, tagName)}/>
-              </TableCell>
-            ))}
-            <TableCell align="right">
-              {!readOnly &&
-                <Button size="small" color="error" onClick={() => remove.mutate(tag.name)}>Delete</Button>}
-            </TableCell>
-          </TableRow>
-        ))}
-      </DataTable>
+      {readOnly ? (
+        <SlaveTable columns={columns} rows={tags} rowKey={tagName} cells={tagCells}/>
+      ) : (
+        <MasterTable
+          name="tags"
+          copies={(slaveApi) => slaveApi.tags.list()}
+          columns={columns}
+          rows={tags}
+          rowKey={tagName}
+          compare={() => true}
+          cells={tagCells}
+          actions={(tag) => <Button size="small" color="error" onClick={() => remove.mutate(tag.name)}>Delete</Button>}
+        />
+      )}
     </Layout>
   );
 }
