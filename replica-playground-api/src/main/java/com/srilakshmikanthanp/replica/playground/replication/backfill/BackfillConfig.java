@@ -42,8 +42,8 @@ public class BackfillConfig {
     return BackfillPlan.planner()
       .addEvent(CategoryUpserted.class)
       .addEvent(TagUpserted.class)
-      .addEvent(ProductUpserted.class)
-      .addEvent(ProductTagAdded.class)
+      .addEvent(ProductUpserted.class, CategoryUpserted.class)
+      .addEvent(ProductTagAdded.class, ProductUpserted.class, TagUpserted.class)
       .plan();
   }
 

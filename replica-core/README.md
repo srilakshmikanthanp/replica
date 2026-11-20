@@ -198,7 +198,7 @@ Register the sources, plan the order of the steps, create the job, and run it:
 ```java
 BackfillPlan plan = BackfillPlan.planner()
   .addEvent(CategoryUpserted.class)
-  .addEvent(ProductUpserted.class)
+  .addEvent(ProductUpserted.class, CategoryUpserted.class)
   .plan();
 
 BackfillJobService backfillJobService = new BackfillJobService(transactionExecutor, replicationGate, backfillJobRepository, backfillJobStepRepository, context.eventRegistry());
@@ -224,8 +224,8 @@ BackfillJobRunner runner = new BackfillJobRunner(
 runner.run(job.getId());
 ```
 
-Annotate a backfilled event with `@BackfillDependsOn(CategoryUpserted.class)` when its rows point at rows another
-event type copies, such as a product's category. The planner copies those first. While the job runs, every write to its station is
+Pass the event types an event depends on after it, such as `CategoryUpserted` for `ProductUpserted` whose rows point
+at categories. The planner copies those first, in any order they are added. While the job runs, every write to its station is
 refused (see step 5). A run can be repeated: it continues from the last
 committed batch. Backfilled events go through the normal outbox to the job's station, so steps
 6 to 8 deliver them.

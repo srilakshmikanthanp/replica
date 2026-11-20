@@ -7,23 +7,17 @@ import com.srilakshmikanthanp.replica.graph.TopologicalSorter;
 import java.util.*;
 
 public class BackfillPlanner {
-  private final Set<Class<? extends Event>> events = new LinkedHashSet<>();
+  private final Map<Class<? extends Event>, List<Class<? extends Event>>> events = new LinkedHashMap<>();
 
   private Collection<Node<Class<? extends Event>>> createGraph() {
     Map<Class<? extends Event>, Node<Class<? extends Event>>> nodes = new LinkedHashMap<>();
 
-    for (Class<? extends Event> event : events) {
+    for (Class<? extends Event> event : events.keySet()) {
       nodes.put(event, new Node<>(event));
     }
 
     for (var node : nodes.values()) {
-      BackfillDependsOn dependsOn = node.getValue().getAnnotation(BackfillDependsOn.class);
-
-      if (dependsOn == null) {
-        continue;
-      }
-
-      for (Class<? extends Event> dependency : dependsOn.value()) {
+      for (Class<? extends Event> dependency : events.get(node.getValue())) {
         if (nodes.get(dependency) != null) node.addDependency(nodes.get(dependency));
       }
     }
@@ -31,8 +25,9 @@ public class BackfillPlanner {
     return nodes.values();
   }
 
-  public BackfillPlanner addEvent(Class<? extends Event> event) {
-    events.add(event);
+  @SafeVarargs
+  public final BackfillPlanner addEvent(Class<? extends Event> event, Class<? extends Event>... dependsOn) {
+    events.put(event, List.of(dependsOn));
     return this;
   }
 

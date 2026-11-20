@@ -9,70 +9,52 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BackfillPlanTest {
-  static class ShouldSortComplexDependencyGraphA implements Event {
+  record A() implements Event {
   }
 
-  @BackfillDependsOn(ShouldSortComplexDependencyGraphA.class)
-  static class ShouldSortComplexDependencyGraphB implements Event {
+  record B() implements Event {
   }
 
-  @BackfillDependsOn(ShouldSortComplexDependencyGraphA.class)
-  static class ShouldSortComplexDependencyGraphC implements Event {
+  record C() implements Event {
   }
 
-  @BackfillDependsOn({ShouldSortComplexDependencyGraphB.class, ShouldSortComplexDependencyGraphC.class})
-  static class ShouldSortComplexDependencyGraphD implements Event {
+  record D() implements Event {
   }
 
-  @BackfillDependsOn(ShouldSortComplexDependencyGraphB.class)
-  static class ShouldSortComplexDependencyGraphE implements Event {
+  record E() implements Event {
   }
 
-  @BackfillDependsOn({ShouldSortComplexDependencyGraphD.class, ShouldSortComplexDependencyGraphE.class})
-  static class ShouldSortComplexDependencyGraphF implements Event {
+  record F() implements Event {
   }
 
   @Test
   void shouldSortComplexDependencyGraph() {
-    BackfillPlan planner = BackfillPlan.planner()
-      .addEvent(ShouldSortComplexDependencyGraphF.class)
-      .addEvent(ShouldSortComplexDependencyGraphC.class)
-      .addEvent(ShouldSortComplexDependencyGraphD.class)
-      .addEvent(ShouldSortComplexDependencyGraphA.class)
-      .addEvent(ShouldSortComplexDependencyGraphE.class)
-      .addEvent(ShouldSortComplexDependencyGraphB.class)
-      .plan();
+    List<Class<? extends Event>> ordered = BackfillPlan.planner()
+      .addEvent(F.class, D.class, E.class)
+      .addEvent(C.class, A.class)
+      .addEvent(D.class, B.class, C.class)
+      .addEvent(A.class)
+      .addEvent(E.class, B.class)
+      .addEvent(B.class, A.class)
+      .plan()
+      .orderedEvents();
 
-    List<Class<? extends Event>> ordered = planner.orderedEvents();
-
-    assertTrue(ordered.indexOf(ShouldSortComplexDependencyGraphA.class) < ordered.indexOf(ShouldSortComplexDependencyGraphB.class));
-    assertTrue(ordered.indexOf(ShouldSortComplexDependencyGraphA.class) < ordered.indexOf(ShouldSortComplexDependencyGraphC.class));
-    assertTrue(ordered.indexOf(ShouldSortComplexDependencyGraphB.class) < ordered.indexOf(ShouldSortComplexDependencyGraphD.class));
-    assertTrue(ordered.indexOf(ShouldSortComplexDependencyGraphC.class) < ordered.indexOf(ShouldSortComplexDependencyGraphD.class));
-    assertTrue(ordered.indexOf(ShouldSortComplexDependencyGraphB.class) < ordered.indexOf(ShouldSortComplexDependencyGraphE.class));
-    assertTrue(ordered.indexOf(ShouldSortComplexDependencyGraphD.class) < ordered.indexOf(ShouldSortComplexDependencyGraphF.class));
-    assertTrue(ordered.indexOf(ShouldSortComplexDependencyGraphE.class) < ordered.indexOf(ShouldSortComplexDependencyGraphF.class));
-  }
-
-  @BackfillDependsOn(ShouldThrowWhenDependencyHasCycleB.class)
-  static class ShouldThrowWhenDependencyHasCycleA implements Event {
-  }
-
-  @BackfillDependsOn(ShouldThrowWhenDependencyHasCycleC.class)
-  static class ShouldThrowWhenDependencyHasCycleB implements Event {
-  }
-
-  @BackfillDependsOn(ShouldThrowWhenDependencyHasCycleA.class)
-  static class ShouldThrowWhenDependencyHasCycleC implements Event {
+    assertTrue(ordered.indexOf(A.class) < ordered.indexOf(B.class));
+    assertTrue(ordered.indexOf(A.class) < ordered.indexOf(C.class));
+    assertTrue(ordered.indexOf(B.class) < ordered.indexOf(D.class));
+    assertTrue(ordered.indexOf(C.class) < ordered.indexOf(D.class));
+    assertTrue(ordered.indexOf(B.class) < ordered.indexOf(E.class));
+    assertTrue(ordered.indexOf(D.class) < ordered.indexOf(F.class));
+    assertTrue(ordered.indexOf(E.class) < ordered.indexOf(F.class));
   }
 
   @Test
   void shouldThrowWhenDependencyHasCycle() {
     assertThrows(IllegalStateException.class, () ->
       BackfillPlan.planner()
-        .addEvent(ShouldThrowWhenDependencyHasCycleA.class)
-        .addEvent(ShouldThrowWhenDependencyHasCycleB.class)
-        .addEvent(ShouldThrowWhenDependencyHasCycleC.class)
+        .addEvent(A.class, B.class)
+        .addEvent(B.class, C.class)
+        .addEvent(C.class, A.class)
         .plan()
     );
   }
