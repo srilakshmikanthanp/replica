@@ -17,7 +17,7 @@ it arrive.
 
 ## Running the playground
 
-Requires Java 21 or later and Node.js. Copy `.env.example` to `.env`, then run each task in its own terminal:
+Needs Java 21 and Node.js. Copy `.env.example` to `.env`, then run each in its own terminal:
 
 ```
 ./gradlew runMaster    # http://localhost:8080
@@ -25,9 +25,10 @@ Requires Java 21 or later and Node.js. Copy `.env.example` to `.env`, then run e
 ./gradlew runWeb       # http://localhost:5173
 ```
 
-Open http://localhost:5173 and add the slave on the Stations page with its URL, `http://localhost:8081`. The master
-copies its existing data to the slave and sends every later change. Another slave:
-`./gradlew runSlave -Pstation=slave3 -Pport=8083`.
+Open http://localhost:5173 and, on the Stations page, add the slave at `http://localhost:8081`. It gets the existing
+data, then every new change.
+
+More slaves: `./gradlew runSlave2` (port 8082), or `./gradlew runSlave -Pstation=<name> -Pport=<port>`.
 
 ## Running the tests
 
