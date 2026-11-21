@@ -56,13 +56,14 @@ Needs Java 21 and Node.js. Copy `.env.example` to `.env`, then run each in its o
 ```
 ./gradlew runMaster    # http://localhost:8080
 ./gradlew runSlave1    # http://localhost:8081
+./gradlew runSlave2    # http://localhost:8082
 ./gradlew runWeb       # http://localhost:5173
 ```
 
-Open http://localhost:5173 and, on the Stations page, add the slave at `http://localhost:8081`. It gets the existing
-data, then every new change.
+Open http://localhost:5173 and, on the Stations page, add the slaves at `http://localhost:8081` and
+`http://localhost:8082`. Each gets the existing data, then every new change.
 
-More slaves: `./gradlew runSlave2` (port 8082), or `./gradlew runSlave -Pstation=<name> -Pport=<port>`.
+More slaves: `./gradlew runSlave -Pstation=<name> -Pport=<port>`.
 
 ## Running the tests
 
