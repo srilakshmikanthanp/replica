@@ -1,8 +1,42 @@
 # Replica
 
-A Java library that replicates changes from one database to others, using a transactional outbox on the source and an
-inbox on each destination. It can also backfill existing data to a station added later. Delivery is at least once, and
-the destination applies events in order. See the [`replica-core` guide](replica-core/README.md) for how it works.
+Replica is a Java library for replicating events (changes) from one application to others.
+
+Applications exchange events rather than database records, so the source and destination can use the same or different
+schemas. Each application handles incoming events with its own event handlers.
+
+```mermaid
+flowchart LR
+  source(Source Application) -->|Write| transaction
+
+  subgraph transaction [Database Transaction]
+    data[(Database)] --> outbox[(Outbox)]
+  end
+
+  data -->|Read existing data| backfill(Backfill Job)
+  backfill --> outbox
+
+  outbox --> eventsA([Events]) --> destinationA(Destination A)
+  destinationA --> inboxA[(Inbox)] --> handlerA
+
+  subgraph transactionA [Database Transaction]
+    handlerA(Event Handler) --> dataA[(Database)]
+  end
+
+  outbox --> eventsB([Events]) --> destinationB(Destination B)
+  destinationB --> inboxB[(Inbox)] --> handlerB
+
+  subgraph transactionB [Database Transaction]
+    handlerB(Event Handler) --> dataB[(Database)]
+  end
+```
+
+The source writes each event to an outbox in the same transaction as the change. Each destination receives events
+through its inbox and applies them in order. Delivery is at least once.
+
+If a destination needs the existing data, such as one added later, you can start a backfill job. It copies the data,
+converting each record into an event and writing it to the outbox. Writes on the source are not blocked while it runs.
+See the [`replica-core` guide](replica-core/README.md) for how it works.
 
 It comes with a runnable playground: a master and slaves on local H2 databases, and a web app to change data and watch
 it arrive.
