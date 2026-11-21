@@ -3,6 +3,7 @@ package com.srilakshmikanthanp.replica.spring.inbox;
 import com.srilakshmikanthanp.replica.crypto.PayloadCryptography;
 import com.srilakshmikanthanp.replica.inbox.Inbox;
 import com.srilakshmikanthanp.replica.inbox.InboxRepository;
+import com.srilakshmikanthanp.replica.spring.station.StationJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.support.TransactionOperations;
@@ -11,11 +12,13 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 public class InboxSpringRepository implements InboxRepository {
-  private final InboxJpaRepository jpaRepository;
+  private final InboxJpaRepository inboxJpaRepository;
+  private final StationJpaRepository stationJpaRepository;
   private final TransactionOperations transactionOperations;
   private final PayloadCryptography payloadCryptography;
 
@@ -50,7 +53,7 @@ public class InboxSpringRepository implements InboxRepository {
       throw new IllegalArgumentException("limit must be greater than 0");
     }
 
-    return jpaRepository
+    return inboxJpaRepository
       .findUnprocessed(sourceId, PageRequest.of(0, limit))
       .stream()
       .map(this::toModel)
@@ -62,13 +65,14 @@ public class InboxSpringRepository implements InboxRepository {
     return transactionOperations.execute(status -> {
       List<Inbox> inserted = new ArrayList<>();
 
-      messages.stream().collect(Collectors.groupingBy(Inbox::getSourceId)).forEach((sourceId, group) -> {
-        Set<Long> known = new HashSet<>(jpaRepository.findMessageIds(sourceId, group.stream().map(Inbox::getMessageId).toList()));
+      messages.stream().collect(Collectors.groupingBy(Inbox::getSourceId, TreeMap::new, Collectors.toList())).forEach((sourceId, group) -> {
+        stationJpaRepository.findByIdForUpdate(sourceId).orElseThrow(() -> new IllegalArgumentException("Unknown source station " + sourceId));
+        Set<Long> known = new HashSet<>(inboxJpaRepository.findMessageIds(sourceId, group.stream().map(Inbox::getMessageId).toList()));
         group.stream().filter(message -> known.add(message.getMessageId())).forEach(inserted::add);
       });
 
       List<InboxEntity> entities = inserted.stream().map(this::toEntity).toList();
-      jpaRepository.saveAll(entities);
+      inboxJpaRepository.saveAll(entities);
 
       for (int i = 0; i < inserted.size(); i++) {
         inserted.get(i).setId(entities.get(i).getId());
@@ -82,7 +86,7 @@ public class InboxSpringRepository implements InboxRepository {
   public boolean markAsProcessed(Inbox message) {
     long processedAt = System.currentTimeMillis();
 
-    Integer updated = transactionOperations.execute(status -> jpaRepository.markAsProcessed(message.getId(), processedAt));
+    Integer updated = transactionOperations.execute(status -> inboxJpaRepository.markAsProcessed(message.getId(), processedAt));
 
     if (updated == null || updated == 0) {
       return false;

@@ -8,6 +8,7 @@ import com.srilakshmikanthanp.replica.event.EventSerializer;
 import com.srilakshmikanthanp.replica.inbox.InboxRepository;
 import com.srilakshmikanthanp.replica.spring.inbox.InboxJpaRepository;
 import com.srilakshmikanthanp.replica.spring.inbox.InboxSpringRepository;
+import com.srilakshmikanthanp.replica.spring.station.StationJpaRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -15,8 +16,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Configuration
 public class InboxConfig {
   @Bean
-  InboxRepository inboxRepository(InboxJpaRepository jpa, TransactionTemplate transactionTemplate) {
-    return new InboxSpringRepository(jpa, transactionTemplate, PayloadCryptography.none());
+  InboxRepository inboxRepository(InboxJpaRepository jpa, StationJpaRepository stationJpa, TransactionTemplate transactionTemplate) {
+    return new InboxSpringRepository(jpa, stationJpa, transactionTemplate, PayloadCryptography.none());
   }
 
   @Bean

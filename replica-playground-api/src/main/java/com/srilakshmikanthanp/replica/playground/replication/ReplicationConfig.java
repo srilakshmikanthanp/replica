@@ -65,8 +65,13 @@ public class ReplicationConfig {
   }
 
   @Bean
-  InboxRepository inboxRepository(InboxJpaRepository jpa, TransactionTemplate transactionTemplate, PayloadCryptography payloadCryptography) {
-    return new InboxSpringRepository(jpa, transactionTemplate, payloadCryptography);
+  InboxRepository inboxRepository(
+    InboxJpaRepository jpa,
+    StationJpaRepository stationJpa,
+    TransactionTemplate transactionTemplate,
+    PayloadCryptography payloadCryptography
+  ) {
+    return new InboxSpringRepository(jpa, stationJpa, transactionTemplate, payloadCryptography);
   }
 
   @Bean
