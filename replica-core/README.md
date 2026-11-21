@@ -112,7 +112,8 @@ operation, not before it, so a station added by a backfill job is seen by every 
 created.
 
 While a destination is being backfilled, an event is skipped if the backfill has not reached its row yet, because the
-backfill will copy that row later. Other events are sent as usual. See `affectedBy` in step 9.
+backfill will copy that row later. Other events are sent as usual. See `affectedBy` in step 9, and
+[docs/backfill.md](docs/backfill.md) for why writes need not wait for the backfill.
 
 ## 6. Publish the outbox
 

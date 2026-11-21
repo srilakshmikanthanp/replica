@@ -35,8 +35,8 @@ The source writes each event to an outbox in the same transaction as the change.
 through its inbox and applies them in order. Delivery is at least once.
 
 If a destination needs the existing data, such as one added later, you can start a backfill job. It copies the data,
-converting each record into an event and writing it to the outbox. Writes on the source are not blocked while it runs.
-See the [`replica-core` guide](replica-core/README.md) for how it works.
+converting each record into an event and writing it to the outbox. Writes on the source are not blocked while it runs
+([how](replica-core/docs/backfill.md)). See the [`replica-core` guide](replica-core/README.md) for how it works.
 
 It comes with a runnable playground: a master and slaves on local H2 databases, and a web app to change data and watch
 it arrive.
