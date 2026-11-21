@@ -13,7 +13,6 @@ import com.srilakshmikanthanp.replica.playground.tag.TagRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
-import java.util.HashSet;
 import java.util.NoSuchElementException;
 
 @Master
@@ -27,12 +26,11 @@ public class ProductReplicationRepository {
   public Product save(Product product) {
     return replicationWriter.write(
       () -> {
-        Product toSave = new Product();
+        Product toSave = productRepository.findById(product.getSku()).orElseGet(Product::new);
         toSave.setSku(product.getSku());
         toSave.setCategory(product.getCategory());
         toSave.setName(product.getName());
         toSave.setPrice(product.getPrice());
-        productRepository.findById(product.getSku()).ifPresent(existing -> toSave.setTags(new HashSet<>(existing.getTags())));
         return productRepository.saveAndFlush(toSave);
       },
       saved -> new ProductUpserted(
