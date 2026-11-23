@@ -5,7 +5,7 @@ import com.srilakshmikanthanp.replica.database.transaction.TransactionExecutor;
 import com.srilakshmikanthanp.replica.event.Event;
 import com.srilakshmikanthanp.replica.event.EventRegistry;
 import com.srilakshmikanthanp.replica.event.EventSerializer;
-import com.srilakshmikanthanp.replica.outbox.backfill.BackfillEventFilter;
+import com.srilakshmikanthanp.replica.outbox.backfill.LiveEventFilter;
 import lombok.RequiredArgsConstructor;
 
 import java.util.ArrayList;
@@ -15,7 +15,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class OutboxTransactionExecutor {
   private final OutboxRepository outboxRepository;
-  private final BackfillEventFilter backfillEventFilter;
+  private final LiveEventFilter liveEventFilter;
   private final TransactionExecutor transactionExecutor;
   private final ReplicationGate replicationGate;
   private final EventRegistry eventRegistry;
@@ -31,7 +31,7 @@ public class OutboxTransactionExecutor {
 
       var result = operation.execute();
 
-      for (Map.Entry<Long, E> entry : backfillEventFilter.filter(result.eventsByDestination()).entrySet()) {
+      for (Map.Entry<Long, E> entry : liveEventFilter.filter(result.eventsByDestination()).entrySet()) {
         E event = entry.getValue();
         Outbox outbox = new Outbox();
         outbox.setEventType(eventRegistry.getEventTypeByEventClass(event.getClass()));

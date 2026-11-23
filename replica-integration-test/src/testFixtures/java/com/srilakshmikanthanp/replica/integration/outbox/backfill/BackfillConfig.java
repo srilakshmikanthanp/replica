@@ -11,6 +11,7 @@ import com.srilakshmikanthanp.replica.outbox.backfill.CursorCodec;
 import com.srilakshmikanthanp.replica.outbox.backfill.BackfillJobRepository;
 import com.srilakshmikanthanp.replica.outbox.backfill.BackfillJobService;
 import com.srilakshmikanthanp.replica.outbox.backfill.BackfillJobStepRepository;
+import com.srilakshmikanthanp.replica.outbox.backfill.BackfillPolicy;
 import com.srilakshmikanthanp.replica.spring.outbox.backfill.BackfillJobJpaRepository;
 import com.srilakshmikanthanp.replica.spring.outbox.backfill.BackfillJobSpringRepository;
 import com.srilakshmikanthanp.replica.spring.outbox.backfill.BackfillJobStepJpaRepository;
@@ -37,9 +38,10 @@ public class BackfillConfig {
     ReplicationGate replicationGate,
     BackfillJobRepository backfillJobRepository,
     BackfillJobStepRepository backfillJobStepRepository,
-    EventRegistry eventRegistry
+    EventRegistry eventRegistry,
+    BackfillPolicy backfillPolicy
   ) {
-    return new BackfillJobService(transactionExecutor, replicationGate, backfillJobRepository, backfillJobStepRepository, eventRegistry);
+    return new BackfillJobService(transactionExecutor, replicationGate, backfillJobRepository, backfillJobStepRepository, eventRegistry, backfillPolicy);
   }
 
   @Bean

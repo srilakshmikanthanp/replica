@@ -5,14 +5,13 @@ import com.srilakshmikanthanp.replica.event.EventRegistry;
 import lombok.RequiredArgsConstructor;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @RequiredArgsConstructor
 public class BackfillRegistry {
-  final Map<Class<? extends Event>, Map<Class<? extends Event>, CursorEventPredicate<Cursor, Event>>> affected = new HashMap<>();
-  final Map<Class<? extends Event>, EventSource<? extends Event, ? extends Cursor>> registry = new HashMap<>();
+  private final Map<Class<? extends Event>, EventSource<? extends Event, ? extends Cursor>> registry = new HashMap<>();
   private final EventRegistry eventRegistry;
 
   @SuppressWarnings("unchecked")
@@ -24,16 +23,20 @@ public class BackfillRegistry {
     return this.findEventSource(eventClass).orElseThrow(() -> new IllegalArgumentException("No event source registered for event class: " + eventClass.getName()));
   }
 
-  public List<Class<? extends Event>> findBackfillEventsAffectedBy(Class<? extends Event> eventClass) {
-    return affected.entrySet().stream().filter(entry -> entry.getValue().containsKey(eventClass)).<Class<? extends Event>>map(Map.Entry::getKey).toList();
-  }
-
-  public Optional<CursorEventPredicate<Cursor, Event>> findPolicy(Class<? extends Event> backfilledClass, Class<? extends Event> eventClass) {
-    return Optional.ofNullable(affected.getOrDefault(backfilledClass, Map.of()).get(eventClass));
-  }
-
   public Class<? extends Event> getBackfillEvent(String eventType) {
     return eventRegistry.getEventClassByEventType(eventType);
+  }
+
+  boolean hasEventSource(Class<? extends Event> eventClass) {
+    return registry.containsKey(eventClass);
+  }
+
+  void addEventSource(Class<? extends Event> eventClass, EventSource<? extends Event, ? extends Cursor> eventSource) {
+    registry.put(eventClass, eventSource);
+  }
+
+  public Set<Class<? extends Event>> getBackfillEvents() {
+    return registry.keySet();
   }
 
   public static BackfillRegistryBuilder builder(EventRegistry eventRegistry) {

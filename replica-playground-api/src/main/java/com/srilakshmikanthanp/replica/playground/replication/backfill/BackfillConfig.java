@@ -28,26 +28,36 @@ import org.springframework.context.annotation.Configuration;
 public class BackfillConfig {
   @Bean
   BackfillRegistry backfillRegistry(
-    CategoryEventSource categories,
-    TagEventSource tags,
-    ProductEventSource products,
-    ProductTagEventSource productTags,
+    CategoryEventSource categoryEventSource,
+    TagEventSource tagEventSource,
+    ProductEventSource productEventSource,
+    ProductTagEventSource productTagEventSource,
     EventRegistry eventRegistry
   ) {
     return BackfillRegistry.builder(eventRegistry)
-      .register(CategoryUpserted.class, categories)
+      .register(CategoryUpserted.class, categoryEventSource)
+      .register(TagUpserted.class, tagEventSource)
+      .register(ProductUpserted.class, productEventSource)
+      .register(ProductTagAdded.class, productTagEventSource)
+      .build();
+  }
+
+  @Bean
+  CursorBackfillPolicy cursorBackfillPolicy(BackfillJobStepRepository steps, BackfillRegistry backfillRegistry, JsonCursorCodec cursorCodec) {
+    return CursorBackfillPolicy.builder(steps, backfillRegistry, cursorCodec)
+      .backfill(CategoryUpserted.class, KeyCursor.class)
         .affectedBy(CategoryUpserted.class, CategoryUpserted::code, KeyCursor::last)
         .affectedBy(CategoryDeleted.class, CategoryDeleted::code, KeyCursor::last)
         .done()
-      .register(TagUpserted.class, tags)
+      .backfill(TagUpserted.class, KeyCursor.class)
         .affectedBy(TagUpserted.class, TagUpserted::name, KeyCursor::last)
         .affectedBy(TagDeleted.class, TagDeleted::name, KeyCursor::last)
         .done()
-      .register(ProductUpserted.class, products)
+      .backfill(ProductUpserted.class, KeyCursor.class)
         .affectedBy(ProductUpserted.class, ProductUpserted::sku, KeyCursor::last)
         .affectedBy(ProductDeleted.class, ProductDeleted::sku, KeyCursor::last)
         .done()
-      .register(ProductTagAdded.class, productTags)
+      .backfill(ProductTagAdded.class, KeyCursor.class)
         .affectedBy(ProductTagAdded.class, ProductTagAdded::productSku, KeyCursor::last)
         .affectedBy(ProductTagRemoved.class, ProductTagRemoved::productSku, KeyCursor::last)
         .affectedBy(ProductDeleted.class, ProductDeleted::sku, KeyCursor::last)
@@ -71,9 +81,10 @@ public class BackfillConfig {
     ReplicationGate replicationGate,
     BackfillJobRepository jobs,
     BackfillJobStepRepository steps,
-    EventRegistry eventRegistry
+    EventRegistry eventRegistry,
+    CursorBackfillPolicy cursorBackfillPolicy
   ) {
-    return new BackfillJobService(transactionExecutor, replicationGate, jobs, steps, eventRegistry);
+    return new BackfillJobService(transactionExecutor, replicationGate, jobs, steps, eventRegistry, cursorBackfillPolicy);
   }
 
   @Bean

@@ -4,37 +4,22 @@ import com.srilakshmikanthanp.replica.event.Event;
 import com.srilakshmikanthanp.replica.event.EventRegistry;
 import lombok.RequiredArgsConstructor;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 @RequiredArgsConstructor
 public class BackfillRegistryBuilder {
   private final BackfillRegistry registry;
   private final EventRegistry eventRegistry;
 
-  public <T extends Event, C extends Cursor> BackfillRegistrationBuilder<C> register(
-    Class<T> eventClass,
-    EventSource<T, C> eventSource
-  ) {
-    Map<Class<? extends Event>, CursorEventPredicate<Cursor, Event>> affected = new LinkedHashMap<>();
-
+  public <T extends Event, C extends Cursor> BackfillRegistryBuilder register(Class<T> eventClass, EventSource<T, C> eventSource) {
     if (eventRegistry.findEventTypeByEventClass(eventClass).isEmpty()) {
       throw new IllegalArgumentException(eventClass.getName() + " is not a registered event type");
     }
 
-    if (registry.registry.containsKey(eventClass)) {
+    if (registry.hasEventSource(eventClass)) {
       throw new IllegalArgumentException(eventClass.getName() + " is registered twice");
     }
 
-    registry.registry.put(eventClass, eventSource);
-    registry.affected.put(eventClass, affected);
-
-    return new BackfillRegistrationBuilder<>(
-      this,
-      eventClass,
-      eventSource.getCursorClass(),
-      affected
-    );
+    registry.addEventSource(eventClass, eventSource);
+    return this;
   }
 
   public BackfillRegistry build() {

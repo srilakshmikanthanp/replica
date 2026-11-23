@@ -16,6 +16,7 @@ public class BackfillJobService {
   private final BackfillJobRepository backfillJobRepository;
   private final BackfillJobStepRepository backfillJobStepRepository;
   private final EventRegistry eventRegistry;
+  private final NewJobValidator newJobValidator;
 
   public BackfillJobCreateResult create(long destinationId, BackfillPlan plan) {
     if (plan == null) {
@@ -36,9 +37,8 @@ public class BackfillJobService {
     }
 
     return transactionExecutor.execute(() -> {
-      BackfillJobValidator validator = new BackfillJobValidator(backfillJobStepRepository);
       replicationGate.enterExclusive();
-      validator.requireNotRunning(destinationId, steps);
+      newJobValidator.validate(destinationId, steps);
       backfillJobRepository.save(job);
       steps.forEach(step -> step.setJobId(job.getId()));
       backfillJobStepRepository.saveAll(steps);

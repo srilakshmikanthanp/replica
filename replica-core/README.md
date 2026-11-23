@@ -34,7 +34,7 @@ Events must be self-contained: carry the full state the destination needs, so ap
 reading other data.
 
 Replaying events in order reproduces the source's final state only under some conditions on how you write them, such
-as building an event from rows you read after locking them. [docs/ordering.md](docs/ordering.md) has the
+as building an event from rows you read after locking them. [docs/outbox/ordering.md](docs/outbox/ordering.md) has the
 reasoning.
 
 Provide an `EventSerializer` and `EventDeserializer` that turn an event into the payload string and back (for example
@@ -81,15 +81,20 @@ EventContext context = EventContext.builder()
 returns the result and the event to send to each destination station:
 
 ```java
-BackfillEventFilter backfillEventFilter = new BackfillEventFilter(
-  backfillJobStepRepository,
-  backfillRegistry,
-  cursorCodec
-);
+BackfillPolicy backfillPolicy = CursorBackfillPolicy.builder(backfillJobStepRepository, backfillRegistry, cursorCodec)
+  .backfill(CategoryUpserted.class, CategoryCursor.class)
+    .affectedBy(CategoryUpserted.class, CategoryUpserted::code, CategoryCursor::lastCode)
+    .affectedBy(CategoryDeleted.class, CategoryDeleted::code, CategoryCursor::lastCode)
+    .done()
+  .backfill(ProductUpserted.class, ProductCursor.class)
+    .affectedBy(ProductUpserted.class, ProductUpserted::id, ProductCursor::lastId, Long::compare)
+    .affectedBy(ProductDeleted.class, ProductDeleted::id, ProductCursor::lastId, Long::compare)
+    .done()
+  .build();
 
 OutboxTransactionExecutor outboxExecutor = new OutboxTransactionExecutor(
   outboxRepository,
-  backfillEventFilter,
+  backfillPolicy,
   transactionExecutor,
   replicationGate,
   context.eventRegistry(),
@@ -111,9 +116,31 @@ The executor runs your operation in a transaction with the gate held shared. Wor
 operation, not before it, so a station added by a backfill job is seen by every write that starts after the job is
 created.
 
-While a destination is being backfilled, an event is skipped if the backfill has not reached its row yet, because the
-backfill will copy that row later. Other events are sent as usual. See `affectedBy` in step 9, and
-[docs/backfill.md](docs/backfill.md) for why writes need not wait for the backfill.
+The `BackfillPolicy` decides what a write does with its events for a destination that is being backfilled:
+
+- `CursorBackfillPolicy` lets writes run. An event is skipped if the backfill has not reached its row yet, because the
+  backfill will copy that row later. Other events are sent as usual. See `affectedBy` below, and
+  [docs/outbox/backfill/cursor-backfill-policy.md](docs/outbox/backfill/cursor-backfill-policy.md) for why writes need not wait for the backfill.
+- `BlockingBackfillPolicy` rejects the write with `DestinationNotReadyException` until the backfill finishes. It needs no
+  `affectedBy`, so use it when your events are hard to map to row keys.
+- Your own implementation, for any other rule. It runs inside the write's transaction, before the events go to the
+  outbox.
+
+The policy also decides which jobs can run together, in `validate`. `CursorBackfillPolicy` rejects a job with
+`BackfillAlreadyRunningException` if the destination already has an unfinished step of one of its event types, because
+it checks events against one cursor per type. `BlockingBackfillPolicy` accepts it, so for example two jobs can copy
+different subsets of the same event type at once.
+
+For `CursorBackfillPolicy`, name each backfilled event with the cursor class its source uses, then use `affectedBy` to list
+the live events that change the rows that source copies, including the backfilled event itself. `done()` throws if the
+backfilled event is missing, and `build()` throws if an event registered for backfill has no rules. For each one, give how to read the row key from the event and from the cursor. An event
+whose key is greater than the cursor's is skipped, because the backfill will copy that row later. Keys are compared in
+natural order, or with a comparator such as `Long::compare`. For other cases, such as keys made of several columns,
+pass a `CursorEventPredicate` instead.
+
+The comparison must order keys exactly as the source's `ORDER BY` does. Strings compare by character code in Java, but
+many database collations ignore case or accents, so order string keys with a binary collation in the source, or page by
+a numeric key.
 
 ## 6. Publish the outbox
 
@@ -213,20 +240,15 @@ BackfillJobService backfillJobService = new BackfillJobService(
   replicationGate,
   backfillJobRepository,
   backfillJobStepRepository,
-  context.eventRegistry()
+  context.eventRegistry(),
+  backfillPolicy
 );
 
 BackfillJob job = backfillJobService.create(stationId, plan).job();
 
 BackfillRegistry backfillRegistry = BackfillRegistry.builder(context.eventRegistry())
   .register(CategoryUpserted.class, categoryEventSource)
-    .affectedBy(CategoryUpserted.class, CategoryUpserted::code, CategoryCursor::lastCode)
-    .affectedBy(CategoryDeleted.class, CategoryDeleted::code, CategoryCursor::lastCode)
-    .done()
   .register(ProductUpserted.class, productEventSource)
-    .affectedBy(ProductUpserted.class, ProductUpserted::id, ProductCursor::lastId, Long::compare)
-    .affectedBy(ProductDeleted.class, ProductDeleted::id, ProductCursor::lastId, Long::compare)
-    .done()
   .build();
 
 BackfillJobRunner runner = new BackfillJobRunner(
@@ -246,16 +268,6 @@ runner.run(job.getId());
 
 Pass the event types an event depends on after it, such as `CategoryUpserted` for `ProductUpserted` whose rows point
 at categories. The planner copies those first, in any order they are added.
-
-Use `affectedBy` to list the live events that change the rows a source copies, including the backfilled event itself.
-`done()` throws if the backfilled event is missing. For each one, give how to read the row key from the event and from
-the cursor. An event whose key is greater than the cursor's is skipped, because the backfill will copy that row later.
-Keys are compared in natural order, or with a comparator such as `Long::compare`. For other cases, such as keys made of
-several columns, pass a `CursorEventPredicate` instead.
-
-The comparison must order keys exactly as the source's `ORDER BY` does. Strings compare by character code in Java, but
-many database collations ignore case or accents, so order string keys with a binary collation in the source, or page by
-a numeric key.
 
 A job can be created at any time, not only when a station is added, for example to copy a new event type to a station
 that is already receiving changes. Creating it takes the gate exclusively, so call it in the same transaction that

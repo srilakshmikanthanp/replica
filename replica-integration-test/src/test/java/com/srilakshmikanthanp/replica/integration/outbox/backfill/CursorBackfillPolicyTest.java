@@ -19,7 +19,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @IntegrationTest(TestUserConfig.class)
-class BackfillEventFilterTest {
+class CursorBackfillPolicyTest {
   @Autowired
   private EventSerializer eventSerializer;
 

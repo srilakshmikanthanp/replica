@@ -1,7 +1,7 @@
-# How backfill runs without blocking writes
+# How the cursor backfill policy lets writes run during a backfill
 
-A backfill copies existing data to a destination while the source continues accepting writes. This explains how
-backfill and live writes work together without losing changes.
+With `CursorBackfillPolicy`, a backfill copies existing data to a destination while the source continues accepting writes.
+This explains how backfill and live writes work together without losing changes.
 
 ## How it works
 
