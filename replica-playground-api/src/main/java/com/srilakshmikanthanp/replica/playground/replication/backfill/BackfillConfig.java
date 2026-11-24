@@ -1,5 +1,6 @@
 package com.srilakshmikanthanp.replica.playground.replication.backfill;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.srilakshmikanthanp.replica.database.transaction.TransactionExecutor;
 import com.srilakshmikanthanp.replica.database.gate.ReplicationGate;
 import com.srilakshmikanthanp.replica.event.EventRegistry;
@@ -20,12 +21,32 @@ import com.srilakshmikanthanp.replica.playground.replication.ReplicationProperti
 import com.srilakshmikanthanp.replica.playground.tag.replication.TagEventSource;
 import com.srilakshmikanthanp.replica.playground.tag.replication.event.TagDeleted;
 import com.srilakshmikanthanp.replica.playground.tag.replication.event.TagUpserted;
+import com.srilakshmikanthanp.replica.spring.outbox.backfill.BackfillJobJpaRepository;
+import com.srilakshmikanthanp.replica.spring.outbox.backfill.BackfillJobSpringRepository;
+import com.srilakshmikanthanp.replica.spring.outbox.backfill.BackfillJobStepJpaRepository;
+import com.srilakshmikanthanp.replica.spring.outbox.backfill.BackfillJobStepSpringRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Master
 @Configuration
 public class BackfillConfig {
+  @Bean
+  JsonCursorCodec jsonCursorCodec(ObjectMapper objectMapper) {
+    return new JsonCursorCodec(objectMapper);
+  }
+
+  @Bean
+  BackfillJobRepository backfillJobRepository(BackfillJobJpaRepository jpa, TransactionTemplate transactionTemplate) {
+    return new BackfillJobSpringRepository(jpa, transactionTemplate);
+  }
+
+  @Bean
+  BackfillJobStepRepository backfillJobStepRepository(BackfillJobStepJpaRepository jpa, TransactionTemplate transactionTemplate) {
+    return new BackfillJobStepSpringRepository(jpa, transactionTemplate);
+  }
+
   @Bean
   BackfillRegistry backfillRegistry(
     CategoryEventSource categoryEventSource,
